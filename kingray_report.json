@@ -1,0 +1,117 @@
+{
+  "target": "http://38.247.148.233:8201/login",
+  "tech_stack": [
+    "Python/Flask"
+  ],
+  "aggressive_mode": {
+    "lfi": false,
+    "cmdi": false,
+    "sqli": false,
+    "ssti": true
+  },
+  "recon": {
+    "total_urls": 0,
+    "interesting_paths": []
+  },
+  "recon_urls": [],
+  "framework_wordlist": [],
+  "directories": [],
+  "sqli": [],
+  "xss": [
+    {
+      "parameter": "username",
+      "payload": "<iframe srcdoc='KR_XSS_CONFIRMED'></iframe>",
+      "context": "html",
+      "evidence": "unique_tag KR_XSS_CONFIRMED reflected (not in baseline)",
+      "status": 200
+    },
+    {
+      "parameter": "password",
+      "payload": "<iframe srcdoc='KR_XSS_CONFIRMED'></iframe>",
+      "context": "html",
+      "evidence": "unique_tag KR_XSS_CONFIRMED reflected (not in baseline)",
+      "status": 200
+    }
+  ],
+  "idor": [],
+  "cmdi": [],
+  "crypto": [
+    {
+      "check": "http_instead_of_https",
+      "detail": "Site is accessible over plain HTTP. All traffic is unencrypted.",
+      "severity": "high"
+    }
+  ],
+  "misconfig": [
+    {
+      "check": "missing_security_header",
+      "header": "Strict-Transport-Security",
+      "detail": "Missing HTTP Strict Transport Security (HSTS) header",
+      "severity": "medium",
+      "current": null
+    },
+    {
+      "check": "missing_security_header",
+      "header": "Content-Security-Policy",
+      "detail": "Missing Content Security Policy (CSP) header",
+      "severity": "medium",
+      "current": null
+    },
+    {
+      "check": "missing_security_header",
+      "header": "X-Content-Type-Options",
+      "detail": "Missing X-Content-Type-Options (nosniff) header",
+      "severity": "low",
+      "current": null
+    },
+    {
+      "check": "missing_security_header",
+      "header": "X-Frame-Options",
+      "detail": "Missing X-Frame-Options (clickjacking protection) header",
+      "severity": "medium",
+      "current": null
+    },
+    {
+      "check": "missing_security_header",
+      "header": "X-XSS-Protection",
+      "detail": "Missing X-XSS-Protection header header",
+      "severity": "low",
+      "current": null
+    },
+    {
+      "check": "missing_security_header",
+      "header": "Referrer-Policy",
+      "detail": "Missing Referrer-Policy header header",
+      "severity": "low",
+      "current": null
+    },
+    {
+      "check": "missing_security_header",
+      "header": "Permissions-Policy",
+      "detail": "Missing Permissions-Policy header header",
+      "severity": "low",
+      "current": null
+    },
+    {
+      "check": "missing_security_header",
+      "header": "Set-Cookie",
+      "detail": "Missing Secure/HttpOnly cookie flags header",
+      "severity": "medium",
+      "current": null
+    },
+    {
+      "check": "server_info_leak",
+      "header": "Server",
+      "detail": "Server header leaks version info: Werkzeug/3.1.8 Python/3.11.15",
+      "severity": "low",
+      "current": "Werkzeug/3.1.8 Python/3.11.15"
+    }
+  ],
+  "auth": [],
+  "ssrf": [],
+  "xxe": [],
+  "lfi": [],
+  "ssti": [],
+  "scan_start": "2026-04-22T14:57:56.959365",
+  "scan_end": "2026-04-22T14:59:50.801817"
+}
