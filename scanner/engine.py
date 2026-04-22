@@ -17,10 +17,8 @@ class Scanner:
         self.target_url = target_url.rstrip("/")
         self.threads = threads
         self.timeout = timeout
-        self.session = requests.Session()
-        self.session.headers.update({
-            "User-Agent": user_agent or "KingRay-Scanner/3.0"
-        })
+        self.user_agent = user_agent or "KingRay-Scanner/3.0"
+        self.session = self._create_session()  # Initialize session properly
         self.results = {
             "target": self.target_url,
             "tech_stack": [],
@@ -46,23 +44,40 @@ class Scanner:
         self._param_context = None
         self.aggressive = {}
         self.framework_wordlist = []
+        self._baseline_cache = {}  # Cache baselines per parameter
 
-    def request(self, path="", method="GET", params=None, data=None, json_body=None):
+    def _create_session(self):
+        """Create a fresh session"""
+        session = requests.Session()
+        session.headers.update({
+            "User-Agent": self.user_agent
+        })
+        return session
+
+    def request(self, path="", method="GET", params=None, data=None, json_body=None, fresh_session=False):
         if path:
             url = urljoin(self.target_url.rstrip("/") + "/", path.lstrip("/"))
         else:
             url = self.target_url
+        
         headers = {}
+        
         try:
+            # Use fresh session if requested (for baseline and independent requests)
+            if fresh_session:
+                session = self._create_session()
+            else:
+                session = self.session
+            
             if json_body is not None:
                 headers["Content-Type"] = "application/json"
-                resp = self.session.post(url, json=json_body, timeout=self.timeout, allow_redirects=True)
+                resp = session.post(url, json=json_body, timeout=self.timeout, allow_redirects=True)
             elif data is not None:
-                resp = self.session.post(url, data=data, timeout=self.timeout, allow_redirects=True)
+                resp = session.post(url, data=data, timeout=self.timeout, allow_redirects=True)
             elif method == "GET":
-                resp = self.session.get(url, params=params, timeout=self.timeout, allow_redirects=True)
+                resp = session.get(url, params=params, timeout=self.timeout, allow_redirects=True)
             else:
-                resp = self.session.post(url, params=params, data=data, timeout=self.timeout, allow_redirects=True)
+                resp = session.post(url, params=params, data=data, timeout=self.timeout, allow_redirects=True)
             return resp
         except requests.exceptions.Timeout:
             return None
@@ -74,6 +89,7 @@ class Scanner:
     def detect_param_context(self):
         if self._param_context:
             return self._param_context
+        
         parsed = urlparse(self.target_url)
         params = parse_qs(parsed.query)
 
@@ -81,7 +97,8 @@ class Scanner:
             self._param_context = "GET"
             return "GET"
 
-        resp = self.request()
+        # Use fresh session for detection
+        resp = self.request(fresh_session=True)
         if resp:
             ct = resp.headers.get("Content-Type", "")
             if "json" in ct or "application/json" in ct:
@@ -113,8 +130,30 @@ class Scanner:
         return {"data": None, "params": {param_name: attack_value}, "json_body": None}
 
     def baseline(self, param_name):
-        args = self.build_request_args(param_name, "BASELINE_KINGRAY_SAFE")
-        resp = self.request(**args)
+        """
+        FIXED: Get TRUE baseline by sending an empty string or benign value
+        that won't trigger validation errors.
+        """
+        if param_name in self._baseline_cache:
+            return self._baseline_cache[param_name]
+        
+        # For login forms, send a dummy email/username that looks legitimate
+        # This avoids triggering "invalid syntax" validation errors
+        context = self.detect_param_context()
+        
+        if isinstance(context, tuple) and param_name.lower() in ['username', 'user', 'email', 'login']:
+            baseline_value = "test_user@example.com"
+        elif isinstance(context, tuple) and param_name.lower() in ['password', 'pass', 'pwd']:
+            baseline_value = "TestPass123!"
+        else:
+            baseline_value = "baseline_test_value"
+        
+        args = self.build_request_args(param_name, baseline_value)
+        # Use fresh session for baseline to avoid state pollution
+        resp = self.request(**args, fresh_session=True)
+        
+        # Cache the baseline
+        self._baseline_cache[param_name] = resp
         return resp
 
     def get_baseline_time(self, param_name):
@@ -206,7 +245,7 @@ class Scanner:
         return list(params)
     
     def get_html_content(self, path=""):
-        resp = self.request(path)
+        resp = self.request(path, fresh_session=True)
         if resp:
             return resp.text
         return ""
